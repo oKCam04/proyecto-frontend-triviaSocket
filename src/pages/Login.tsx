@@ -1,18 +1,33 @@
 // src/pages/Login.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {api} from "../api"
 
 export default function Login() {
-  const [nombre, setNombre] = useState("");
-  const [correo, setCorreo] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aquí normalmente llamas a login backend; por ahora navegamos al lobby
-    // Puedes guardar user en localStorage si quieres
-    localStorage.setItem("nickname", nombre || correo || "invitado");
-    navigate("/lobby");
+    try{
+      const {data}= await api.post("/auth/login",{
+        email,
+        password
+        
+      })
+      const jwt = data?.token?.token ?? data?.token;
+      if (!jwt) throw new Error("No llegó token del servidor");
+
+      localStorage.setItem("token", jwt)
+      localStorage.setItem("user", JSON.stringify(data?.user?? {}) )
+      navigate("/lobby");
+
+    }catch(err:any){
+      alert("Credenciales invalidas!!")
+    } 
+    
+    
   };
 
   return (
@@ -24,22 +39,22 @@ export default function Login() {
 
         <form onSubmit={submit} className="w-full flex flex-col gap-4">
           <div>
-            <label className="block text-sm mb-1">Nombre</label>
+            <label className="block text-sm mb-1">Email</label>
             <input
               required
               type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 rounded bg-transparent border-b border-gray-400 focus:outline-none focus:border-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm mb-1">Correo (opcional)</label>
+            <label className="block text-sm mb-1">Password</label>
             <input
-              type="email"
-              value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 rounded bg-transparent border-b border-gray-400 focus:outline-none focus:border-white"
             />
           </div>

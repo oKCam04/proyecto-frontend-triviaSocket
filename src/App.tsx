@@ -3,12 +3,12 @@ import "./App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { GameProvider } from "./context/GameContext";
 
-import Login from "./pagues/Login";
-import Register from "./pagues/Register";
-import Lobby from "./pagues/Lobby";
-import Game from "./pagues/Juego";
-import CrearPartida from "./pagues/CrearPartida";
-import EndGame from "./pagues/Ranking";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Lobby from "./pages/Lobby";
+import Game from "./pages/Juego";
+import CrearPartida from "./pages/CrearPartida";
+import EndGame from "./pages/Ranking";
 
 function App() {
   return (
