@@ -1,91 +1,162 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getActivePartidas, createPartida } from '../api';
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
-// Asumo que el objeto Partida que viene de la API tiene esta forma
-interface Partida {
-  id: number;
-  codigo: string;
-  status: string;
+type Room = {
+  id: number
+  nombre: string
+  jugadores: number
+  maxJugadores: number
+  categoria: string
+  preguntas: number
+  tiempoRespuesta: number // en segundos
+  codigo?: string
 }
 
-export default function Lobby() {
-  const [partidas, setPartidas] = useState<Partida[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3333"
+
+export default function ListaPartidas() {
+  const nav = useNavigate()
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchPartidas = async () => {
+    ;(async () => {
       try {
-        setIsLoading(true);
-        const activePartidas = await getActivePartidas();
-        setPartidas(activePartidas);
-      } catch (error) {
-        console.error('No se pudieron cargar las partidas', error);
-        // Aquí podrías manejar el caso en que el token haya expirado
-        // y redirigir al login, por ejemplo: navigate('/login');
+        const res = await fetch(`${API_URL}/partidas?status=waiting`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+            "Content-Type": "application/json",
+          },
+        })
+        const data = await res.json()
+        // adapta según tu API: data.data || data
+        const list: Room[] = (data.data ?? data ?? []).map((p: any, i: number) => ({
+          id: p.id,
+          nombre: p.nombre ?? `Sala ${i + 1}`,
+          jugadores: p.jugadores ?? p.players_count ?? 0,
+          maxJugadores: p.max_jugadores ?? 10,
+          categoria: p.categoria?.name ?? p.categoria ?? "General",
+          preguntas: p.preguntas ?? p.questions_count ?? 10,
+          tiempoRespuesta: p.tiempo_respuesta ?? p.answer_time ?? 15,
+          codigo: p.codigo,
+        }))
+        setRooms(list)
+      } catch {
+        // Fallback de ejemplo para ver la UI
+        setRooms([
+          {
+            id: 1,
+            nombre: "Sala 1",
+            jugadores: 5,
+            maxJugadores: 10,
+            categoria: "Capitales",
+            preguntas: 20,
+            tiempoRespuesta: 15,
+            codigo: "ABCD12",
+          },
+        ])
       } finally {
-        setIsLoading(false);
+        setLoading(false)
       }
-    };
+    })()
+  }, [])
 
-    fetchPartidas();
-  }, []);
-
-  const handleCreatePartida = async () => {
-    try {
-      const newPartida = await createPartida();
-      navigate(`/games/${newPartida.id}`); // Corregido
-    } catch (error) {
-      alert('Error al crear la partida. Inténtalo de nuevo.');
-    }
-  };
-
-  const handleJoinPartida = (partidaId: number) => {
-    navigate(`/games/${partidaId}`); // Corregido
-  };
+  const entrar = (room: Room) => {
+    // host inicia: solo entrar a la pantalla de juego/lobby-room
+    nav(`/juego/${room.id}`)
+  }
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-black text-white font-['Irish_Grover'] p-6">
-      <div className="w-full max-w-2xl flex flex-col items-center">
-        <img src="/logo-trivia.png" alt="Trivia Logo" className="w-40 mb-4" />
-        <h1 className="text-5xl mb-2">Salas Disponibles</h1>
-        <p className="mb-8 text-gray-400">Únete a una sala o crea la tuya</p>
+    <div className="min-h-screen bg-neutral-900 text-neutral-100">
+      <div className="mx-auto w-full max-w-6xl px-4 py-10">
+        {/* Header */}
+        <div className="mb-8 flex items-end justify-between">
+          <div>
+            <h1 className="text-4xl font-black tracking-wide text-emerald-400 drop-shadow">
+              TRIVIA
+            </h1>
+            <div className="mt-1 h-1 w-24 rounded bg-emerald-500/70" />
+          </div>
 
-        <div className="w-full mb-8">
-          <button 
-            onClick={handleCreatePartida} 
-            className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 rounded-full transition text-lg"
-          >
-            + Crear Nueva Partida
-          </button>
+          <div className="rounded-full border border-emerald-700/60 bg-neutral-800/60 px-4 py-1 text-sm">
+            <span className="font-semibold text-emerald-400">Pública</span>
+          </div>
         </div>
 
-        <div className="w-full bg-gray-900/50 border border-gray-700 rounded-lg p-4">
-          {isLoading ? (
-            <p className="text-center text-gray-400">Cargando salas...</p>
-          ) : partidas.length > 0 ? (
-            <ul className="space-y-3">
-              {partidas.map((partida) => (
-                <li key={partida.id} className="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
-                  <div>
-                    <p className="font-semibold">Sala</p>
-                    <p className="text-2xl tracking-widest">{partida.codigo}</p>
-                  </div>
-                  <button 
-                    onClick={() => handleJoinPartida(partida.id)}
-                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-full transition"
-                  >
-                    Unirse
-                  </button>
-                </li>
+        {/* Botón título */}
+        <div className="mb-6 flex justify-center">
+          <div className="rounded-md border border-neutral-600 bg-neutral-800/70 px-6 py-2 text-lg shadow">
+            Lista de Partidas
+          </div>
+        </div>
+
+        {/* Contenedor con borde verde */}
+        <div className="rounded-2xl border border-emerald-600/60 bg-neutral-900/40 p-5 md:p-8">
+          {loading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-40 animate-pulse rounded-xl border border-neutral-700/60 bg-neutral-800/50"
+                />
               ))}
-            </ul>
+            </div>
+          ) : rooms.length === 0 ? (
+            <div className="py-10 text-center text-neutral-400">
+              No hay partidas disponibles por ahora.
+            </div>
           ) : (
-            <p className="text-center text-gray-400">No hay salas disponibles. ¡Crea una!</p>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {rooms.map((room) => (
+                <div
+                  key={room.id}
+                  className="group rounded-xl border border-emerald-700/40 bg-neutral-800/70 p-5 shadow transition hover:border-emerald-500/80 hover:shadow-lg"
+                >
+                  <div className="mb-3 text-lg font-semibold text-neutral-100">
+                    <h3 className="mb-3 text-lg font-semibold text-neutral-100 text-center">Sala 1</h3>
+                  </div>
+
+                  <ul className="space-y-1 text-sm text-neutral-300">
+                    <li>
+                      <span className="text-neutral-400">Jugadores:</span>{" "}
+                      {room.jugadores}/{room.maxJugadores}
+                    </li>
+                    <li>
+                      <span className="text-neutral-400">Categoría:</span>{" "}
+                      {room.categoria}
+                    </li>
+                    <li>
+                      <span className="text-neutral-400">Preguntas:</span>{" "}
+                      {room.preguntas}
+                    </li>
+                    <li>
+                      <span className="text-neutral-400">Tiempo Respuesta:</span>{" "}
+                      {room.tiempoRespuesta}s
+                    </li>
+                    {room.codigo ? (
+                      <li>
+                        <span className="text-neutral-400">Código:</span>{" "}
+                        <span className="font-mono text-emerald-400">
+                          {room.codigo}
+                        </span>
+                      </li>
+                    ) : null}
+                  </ul>
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={() => entrar(room)}
+                      className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
+                      Entrar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
     </div>
-  );
+  )
 }
