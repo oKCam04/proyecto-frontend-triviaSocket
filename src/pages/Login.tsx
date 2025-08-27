@@ -24,6 +24,7 @@ export default function Login() {
       navigate("/lobby");
 
     }catch(err:any){
+      
       alert("Credenciales invalidas!!")
     } 
     

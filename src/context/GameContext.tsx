@@ -1,7 +1,6 @@
-/* eslint-disable react-refresh/only-export-components */
-// src/context/GameContext.tsx
+
 import React, { createContext, useContext, useEffect, useState } from "react";
-import socket from "../services/socket";
+import { socket } from "../services/socket";
 
 export type Player = {
   id: string;

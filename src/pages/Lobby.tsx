@@ -1,66 +1,89 @@
-// src/pages/Lobby.tsx
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useGame } from "../context/GameContext";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getActivePartidas, createPartida } from '../api';
+
+// Asumo que el objeto Partida que viene de la API tiene esta forma
+interface Partida {
+  id: number;
+  codigo: string;
+  status: string;
+}
 
 export default function Lobby() {
+  const [partidas, setPartidas] = useState<Partida[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { createRoom, joinRoom } = useGame();
-  const [codeInput, setCodeInput] = useState("");
-  const [roomsList, setRoomsList] = useState<{ code: string; status: string }[]>([]);
 
   useEffect(() => {
-    // opcional: pedir lista de salas al backend vía HTTP o socket
-    // socket.emit("rooms:list", {}, (rooms) => setRoomsList(rooms));
-    // por ahora mock
-    setRoomsList([{ code: "AB12", status: "open" }, { code: "CD34", status: "playing" }]);
+    const fetchPartidas = async () => {
+      try {
+        setIsLoading(true);
+        const activePartidas = await getActivePartidas();
+        setPartidas(activePartidas);
+      } catch (error) {
+        console.error('No se pudieron cargar las partidas', error);
+        // Aquí podrías manejar el caso en que el token haya expirado
+        // y redirigir al login, por ejemplo: navigate('/login');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPartidas();
   }, []);
 
-  const handleCreate = async () => {
-    const code = await createRoom();
-    if (code) {
-      // el moderador queda en la sala — mostrar pantalla de sala o crear partida
-      navigate("/crear-partida");
+  const handleCreatePartida = async () => {
+    try {
+      const newPartida = await createPartida();
+      navigate(`/games/${newPartida.id}`); // Corregido
+    } catch (error) {
+      alert('Error al crear la partida. Inténtalo de nuevo.');
     }
   };
 
-  const handleJoin = () => {
-    const nickname = localStorage.getItem("nickname") || "invitado";
-    joinRoom(codeInput.trim(), nickname);
-    navigate(`/games/${codeInput.trim()}`);
+  const handleJoinPartida = (partidaId: number) => {
+    navigate(`/games/${partidaId}`); // Corregido
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center py-10 font-['Irish_Grover']">
-      <img src="/logo-trivia.png" alt="logo" className="w-48 mb-8" />
-      <div className="flex gap-4 mb-6">
-        <button onClick={handleCreate} className="bg-white text-black px-6 py-3 rounded-md hover:bg-gray-200">Crear sala (soy moderador)</button>
-      </div>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-black text-white font-['Irish_Grover'] p-6">
+      <div className="w-full max-w-2xl flex flex-col items-center">
+        <img src="/logo-trivia.png" alt="Trivia Logo" className="w-40 mb-4" />
+        <h1 className="text-5xl mb-2">Salas Disponibles</h1>
+        <p className="mb-8 text-gray-400">Únete a una sala o crea la tuya</p>
 
-      <div className="bg-white text-black p-6 rounded-xl w-[600px] mb-8">
-        <h3 className="mb-2">Unirse a sala</h3>
-        <div className="flex gap-2">
-          <input value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder="Código ej: AB12" className="p-2 border rounded flex-1" />
-          <button onClick={handleJoin} className="px-4 bg-gray-700 text-white rounded">Unirse</button>
+        <div className="w-full mb-8">
+          <button 
+            onClick={handleCreatePartida} 
+            className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 rounded-full transition text-lg"
+          >
+            + Crear Nueva Partida
+          </button>
         </div>
-      </div>
 
-      <div className="w-full max-w-5xl px-4">
-        <h3 className="text-xl mb-4">Salas públicas (ejemplo)</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {roomsList.map(r => (
-            <div key={r.code} className="bg-white text-black p-4 rounded">
-              <div className="flex justify-between">
-                <div>
-                  <p className="font-bold">Sala {r.code}</p>
-                  <p className="text-sm">Status: {r.status}</p>
-                </div>
-                <div>
-                  <button onClick={() => { setCodeInput(r.code); }} className="px-3 py-1 bg-gray-200 rounded">Usar código</button>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="w-full bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+          {isLoading ? (
+            <p className="text-center text-gray-400">Cargando salas...</p>
+          ) : partidas.length > 0 ? (
+            <ul className="space-y-3">
+              {partidas.map((partida) => (
+                <li key={partida.id} className="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
+                  <div>
+                    <p className="font-semibold">Sala</p>
+                    <p className="text-2xl tracking-widest">{partida.codigo}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleJoinPartida(partida.id)}
+                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-full transition"
+                  >
+                    Unirse
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-gray-400">No hay salas disponibles. ¡Crea una!</p>
+          )}
         </div>
       </div>
     </div>
