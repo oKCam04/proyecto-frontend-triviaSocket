@@ -88,6 +88,10 @@ export default function ListaPartidas() {
           <div className="rounded-md border border-neutral-600 bg-neutral-800/70 px-6 py-2 text-lg shadow">
             Lista de Partidas
           </div>
+          <button className="ml-4 rounded-md bg-emerald-600 px-4 py-2 text-white font-medium hover:bg-emerald-700 transition-colors duration-200 shadow">
+            Crear Partida
+          </button>
+
         </div>
 
         {/* Contenedor con borde verde */}
